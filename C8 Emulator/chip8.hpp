@@ -1,6 +1,8 @@
 #pragma once
 #ifndef CHIP8_HPP
+
 #define CHIP8_HPP
+#define _CRT_SECURE_NO_DEPRECATE
 
 #include <stdio.h>
 
@@ -42,8 +44,9 @@ public:
     bool drawFlag;
     void initialize();
     void emulateCycle();
-    void loadGame();
-    void setKeys();
+    void loadGame(const char* file_path);
+    //void setKeys();
+    unsigned char* getGfx();
 };
 
 #endif

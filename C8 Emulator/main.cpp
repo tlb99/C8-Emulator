@@ -16,85 +16,32 @@ void setupInput()
 
 void drawGraphics()
 {
-
+    gfx.draw(myChip8.getGfx());
 }
 
-int main(int argc, char* args[])
+int main(int argc, char** argv)
 {
-	//Start up SDL and create window
-	if (!init())
-	{
-		printf("Failed to initialize!\n");
-	}
-	else
-	{
-		//Load media
-		if (!loadMedia())
-		{
-			printf("Failed to load media!\n");
-		}
-		else
-		{
-			//Main loop flag
-			bool quit = false;
+    // Set up render system and register input callbacks
+    setupGraphics();
+    setupInput();
 
-			//Event handler
-			SDL_Event e;
+    // Initialize the Chip8 system and load the game into the memory  
+    myChip8.initialize();
+    myChip8.loadGame("pong.rom");
 
-			//Set default current surface
-			gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT];
+    // Emulation loop
+    for (;;)
+    {
+        // Emulate one cycle
+        myChip8.emulateCycle();
 
-			//While application is running
-			while (!quit)
-			{
-				//Handle events on queue
-				while (SDL_PollEvent(&e) != 0)
-				{
-					//User requests quit
-					if (e.type == SDL_QUIT)
-					{
-						quit = true;
-					}
-					//User presses a key
-					else if (e.type == SDL_KEYDOWN)
-					{
-						//Select surfaces based on key press
-						switch (e.key.keysym.sym)
-						{
-						case SDLK_UP:
-							gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_UP];
-							break;
+        // If the draw flag is set, update the screen
+        if (myChip8.drawFlag)
+            drawGraphics();
 
-						case SDLK_DOWN:
-							gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_DOWN];
-							break;
+        // Store key press state (Press and Release)
+        //myChip8.setKeys();
+    }
 
-						case SDLK_LEFT:
-							gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_LEFT];
-							break;
-
-						case SDLK_RIGHT:
-							gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_RIGHT];
-							break;
-
-						default:
-							gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT];
-							break;
-						}
-					}
-				}
-
-				//Apply the current image
-				SDL_BlitSurface(gCurrentSurface, NULL, gScreenSurface, NULL);
-
-				//Update the surface
-				SDL_UpdateWindowSurface(gWindow);
-			}
-		}
-	}
-
-	//Free resources and close SDL
-	close();
-
-	return 0;
+    return 0;
 }

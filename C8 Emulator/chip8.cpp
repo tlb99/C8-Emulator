@@ -127,9 +127,30 @@ void chip8::emulateCycle()
     }
 }
 
-void chip8::loadGame()
+void chip8::loadGame(const char* file_path)
 {
-    // use fopen to load game into buffer here
-    //for(int i = 0; i < bufferSize; ++i)
-    //  memory[i + 512] = buffer[i];
+    //Open file
+    FILE* fp = fopen(file_path,"rb");
+    //Get file size by going to end and calling ftell 
+    fseek(fp, 0L, SEEK_END);
+    const int bufferSize = ftell(fp);
+    //Set fp back to beginning
+    fseek(fp, 0L, SEEK_SET);
+
+    //Declare dynamic array and read file
+    unsigned char* buffer = new unsigned char[bufferSize];
+    fread(buffer,bufferSize,1,fp);
+
+    //Use fopen to load game into buffer
+    for(int i = 0; i < bufferSize; ++i)
+        memory[i + 512] = buffer[i];
+
+    //Close file and release array memory
+    fclose(fp);
+    delete[] buffer;
+}
+
+unsigned char* chip8::getGfx()
+{
+    return this->gfx;
 }
