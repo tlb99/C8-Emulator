@@ -1,5 +1,5 @@
 #include "chip8.hpp"
-
+#include <iostream>
 
 void chip8::initialize()
 {
@@ -8,22 +8,26 @@ void chip8::initialize()
     I = 0;      // Reset index register
     sp = 0;      // Reset stack pointer
 
-    // Clear display	
-    // Clear stack
-    // Clear registers V0-VF
-    // Clear memory
+    memset(gfx, 0x00, 64 * 32);        // Clear display	
+    memset(stack, 0x0000, 16);         // Clear stack
+    memset(V, 0x00, 16);        // Clear registers V0-VF
+    memset(memory, 0x00, 64 * 32);     // Clear memory
 
     // Load fontset
     for (int i = 0; i < 80; ++i)
         memory[i] = chip8_fontset[i];
 
     // Reset timers
+    delay_timer = 60;
+    sound_timer = 60;
 }
 
 void chip8::emulateCycle()
 {
     // Fetch opcode
     opcode = memory[pc] << 8 | memory[pc + 1];
+
+    //std::cout << std::hex << opcode << std::endl;
 
     // Decode opcode
     switch (opcode & 0xF000)
@@ -34,20 +38,99 @@ void chip8::emulateCycle()
         pc += 2;
         break;
 
+    // Jump to address 0x0NNN
+    case 0x1000:
+        pc = opcode & 0x0FFF;
+        break;
+
+    // Call subroutine at NNN
     case 0x2000:
         stack[sp] = pc;
         ++sp;
         pc = opcode & 0x0FFF;
         break;
 
-    case 0x0004:
-        if (V[(opcode & 0x00F0) >> 4] > (0xFF - V[(opcode & 0x0F00) >> 8]))
-            V[0xF] = 1; //carry
+    // Skip the next instruction if VX == NN
+    case 0x3000:
+        if (V[(opcode & 0x0F00) >> 8] == (opcode & 0x00FF))
+            pc += 4;
         else
-            V[0xF] = 0;
-        V[(opcode & 0x0F00) >> 8] += V[(opcode & 0x00F0) >> 4];
+            pc += 2;
+        break;
+
+    // Skip the next instruction if VX != NN
+    case 0x4000:
+        if (V[(opcode & 0x0F00) >> 8] != (opcode & 0x00FF))
+            pc += 4;
+        else
+            pc += 2;
+        break;
+
+    // Skip the next instruction if VX == VY
+    case 0x5000:
+        if (V[(opcode & 0x0F00) >> 8] != V[(opcode & 0x00F0) >> 4])
+            pc += 4;
+        else
+            pc += 2;
+        break;
+
+    // Set VX to NN
+    case 0x6000:
+        V[(opcode & 0x0F00) >> 8] = opcode & 0x00FF;
         pc += 2;
         break;
+
+    // Add NN to VX
+    case 0x7000:
+        V[(opcode & 0x0F00) >> 8] += opcode & 0x00FF;
+        pc += 2;
+        break;
+
+    case 0x8000:
+    {
+        switch (opcode & 0x000F) 
+        {
+            // Set VX to VY
+            case 0x0000:
+                V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x00F0) >> 4];
+                pc += 2;
+                break;
+            // Set VX to VX or VY
+            case 0x0001:
+                V[(opcode & 0x0F00) >> 8] |= V[(opcode & 0x00F0) >> 4];
+                pc += 2;
+                break;
+            // Set VX to VX and VY
+            case 0x0002:
+                V[(opcode & 0x0F00) >> 8] &= V[(opcode & 0x00F0) >> 4];
+                pc += 2;
+                break;
+            // Set VX to VX xor VY
+            case 0x0003:
+                V[(opcode & 0x0F00) >> 8] ^= V[(opcode & 0x00F0) >> 4];
+                pc += 2;
+                break;
+            // Add VY to VX. VF is set to 1 when there's a carry, and to 0 when there is not
+            case 0x0004:
+                if (V[(opcode & 0x00F0) >> 4] > (0xFF - V[(opcode & 0x0F00) >> 8]))
+                    V[0xF] = 1; //carry
+                else
+                    V[0xF] = 0;
+                V[(opcode & 0x0F00) >> 8] += V[(opcode & 0x00F0) >> 4];
+                pc += 2;
+                break;
+            case 0x0005:
+                break;
+            case 0x0006:
+                break;
+            case 0x0007:
+                break;
+            case 0x000E:
+                break;
+        }
+    }
+
+
 
     case 0x0033:
         memory[I] = V[(opcode & 0x0F00) >> 8] / 100;
@@ -55,6 +138,8 @@ void chip8::emulateCycle()
         memory[I + 2] = (V[(opcode & 0x0F00) >> 8] % 100) % 10;
         pc += 2;
         break;
+
+
 
     case 0xD000:
     {

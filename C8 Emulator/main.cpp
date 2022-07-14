@@ -1,5 +1,6 @@
 #include "chip8.hpp"
 #include "gfx.hpp"
+#include <iostream>
 
 chip8 myChip8; 
 Graphics gfx;
@@ -32,6 +33,7 @@ int main(int argc, char** argv)
     // Emulation loop
     for (;;)
     {
+        //std::cout << myChip8.drawFlag << std::endl;
         // Emulate one cycle
         myChip8.emulateCycle();
 
