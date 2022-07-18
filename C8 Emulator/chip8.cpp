@@ -32,11 +32,20 @@ void chip8::emulateCycle()
     // Decode opcode
     switch (opcode & 0xF000)
     {
-    case 0xA000: // ANNN: Sets I to the address NNN
-      // Execute opcode
-        I = opcode & 0x0FFF;
-        pc += 2;
-        break;
+    case 0x0000:
+        switch (opcode & 0x000F)
+        {
+        case 0x0000: // 0x00E0: Clears the screen        
+          // Execute opcode
+            break;
+
+        case 0x000E: // 0x00EE: Returns from subroutine          
+          // Execute opcode
+            break;
+
+        default:
+            printf("Unknown opcode [0x0000]: 0x%X\n", opcode);
+        }
 
     // Jump to address 0x0NNN
     case 0x1000:
@@ -68,7 +77,7 @@ void chip8::emulateCycle()
 
     // Skip the next instruction if VX == VY
     case 0x5000:
-        if (V[(opcode & 0x0F00) >> 8] != V[(opcode & 0x00F0) >> 4])
+        if (V[(opcode & 0x0F00) >> 8] == V[(opcode & 0x00F0) >> 4])
             pc += 4;
         else
             pc += 2;
@@ -119,27 +128,64 @@ void chip8::emulateCycle()
                 V[(opcode & 0x0F00) >> 8] += V[(opcode & 0x00F0) >> 4];
                 pc += 2;
                 break;
+            // Subtract VY from VX. VF is set to 0 when there's a borrow, and 1 when there is not.
             case 0x0005:
+                if (V[(opcode & 0x00F0) >> 4] > V[(opcode & 0x0F00) >> 8])
+                    V[0xF] = 0; //borrow
+                else
+                    V[0xF] = 1;
+                V[(opcode & 0x0F00) >> 8] -= V[(opcode & 0x00F0) >> 4];
+                pc += 2;
                 break;
+            // Stores the least significant bit of VX in VF and then shifts VX to the right by 1
             case 0x0006:
+                V[0xF] = V[(opcode & 0x0F00) >> 8] & 0x0001;
+                V[(opcode & 0x0F00) >> 8] >>= 1;
+                pc += 2;
                 break;
+            // Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there is not
             case 0x0007:
+                if (V[(opcode & 0x0F00) >> 8] > V[(opcode & 0x00F0) >> 4])
+                    V[0xF] = 0; //borrow
+                else
+                    V[0xF] = 1;
+                V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x00F0) >> 4] - V[(opcode & 0x0F00) >> 8];
+                pc += 2;
                 break;
+            // Stores the most significant bit of VX in VF and then shifts VX to the left by 1
             case 0x000E:
+                V[0xF] = V[(opcode & 0x0F00) >> 8] & 0x8000;
+                V[(opcode & 0x0F00) >> 8] <<= 1;
+                pc += 2;
                 break;
         }
     }
 
+    // Skip the next instruction if VX != VY
+    case 0x9000:
+        if (V[(opcode & 0x0F00) >> 8] != V[(opcode & 0x00F0) >> 4])
+            pc += 4;
+        else
+            pc += 2;
+        break;
 
-
-    case 0x0033:
-        memory[I] = V[(opcode & 0x0F00) >> 8] / 100;
-        memory[I + 1] = (V[(opcode & 0x0F00) >> 8] / 10) % 10;
-        memory[I + 2] = (V[(opcode & 0x0F00) >> 8] % 100) % 10;
+    // Set I to the address NNN
+    case 0xA000: 
+      // Execute opcode
+        I = opcode & 0x0FFF;
         pc += 2;
         break;
 
+    // Jump to the address NNN plus V0
+    case 0xB000:
+        pc = (opcode & 0x0FFF) + V[0x0];
+        break;
 
+    // Set VX to NN and a random number in the range of 0-255
+    case 0xC000:
+        V[(opcode & 0x0F00) >> 8] = (opcode & 0x00FF) & (std::rand() % 256);
+        pc += 2;
+        break;
 
     case 0xD000:
     {
@@ -181,19 +227,15 @@ void chip8::emulateCycle()
             break;
         }
 
-    case 0x0000:
-        switch (opcode & 0x000F)
+    case 0xF000:
+        switch (opcode & 0x00FF)
         {
-        case 0x0000: // 0x00E0: Clears the screen        
-          // Execute opcode
+        case 0x0033:
+            memory[I] = V[(opcode & 0x0F00) >> 8] / 100;
+            memory[I + 1] = (V[(opcode & 0x0F00) >> 8] / 10) % 10;
+            memory[I + 2] = (V[(opcode & 0x0F00) >> 8] % 100) % 10;
+            pc += 2;
             break;
-
-        case 0x000E: // 0x00EE: Returns from subroutine          
-          // Execute opcode
-            break;
-
-        default:
-            printf("Unknown opcode [0x0000]: 0x%X\n", opcode);
         }
 
     default:
