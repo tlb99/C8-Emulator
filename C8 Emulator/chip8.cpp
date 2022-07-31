@@ -35,12 +35,14 @@ void chip8::emulateCycle()
     case 0x0000:
         switch (opcode & 0x000F)
         {
-        case 0x0000: // 0x00E0: Clears the screen        
-          // Execute opcode
+        // Clears the screen 
+        case 0x0000:        
+            memset(gfx, 0x00, 64 * 32);
+            pc += 2;
             break;
-
-        case 0x000E: // 0x00EE: Returns from subroutine          
-          // Execute opcode
+        // Returns from subroutine  
+        case 0x000E:         
+            pc = stack[--sp] + 2;
             break;
 
         default:
@@ -217,25 +219,78 @@ void chip8::emulateCycle()
     case 0xE000:
         switch (opcode & 0x00FF)
         {
-            // EX9E: Skips the next instruction 
-            // if the key stored in VX is pressed
-        case 0x009E:
-            if (key[V[(opcode & 0x0F00) >> 8]] != 0)
-                pc += 4;
-            else
-                pc += 2;
-            break;
+                // Skip the next instruction 
+                // if the key stored in VX is pressed
+            case 0x009E:
+                if (key[V[(opcode & 0x0F00) >> 8]] != 0)
+                    pc += 4;
+                else
+                    pc += 2;
+                break;
+
+                // Skip the next instruction 
+                // if the key stored in VX isn't pressed
+            case 0x00A1:
+                if (key[V[(opcode & 0x0F00) >> 8]] == 0)
+                    pc += 4;
+                else
+                    pc += 2;
+                break;
         }
 
     case 0xF000:
         switch (opcode & 0x00FF)
         {
-        case 0x0033:
-            memory[I] = V[(opcode & 0x0F00) >> 8] / 100;
-            memory[I + 1] = (V[(opcode & 0x0F00) >> 8] / 10) % 10;
-            memory[I + 2] = (V[(opcode & 0x0F00) >> 8] % 100) % 10;
-            pc += 2;
-            break;
+            // Sets VX to the value of the delay timer
+            case 0x0007:
+                V[(opcode & 0x0F00) >> 8] = delay_timer;
+                pc += 2;
+                break;
+            // A key press is awaited, and then stored in VX
+            case 0x000A:
+                V[(opcode & 0x0F00) >> 8] = delay_timer;
+                pc += 2;
+                break;
+            //  Sets the delay timer to VX
+            case 0x0015:
+                delay_timer = V[(opcode & 0x0F00) >> 8];
+                pc += 2;
+                break;
+            //  Sets the sound timer to VX
+            case 0x0018:
+                sound_timer = V[(opcode & 0x0F00) >> 8];
+                pc += 2;
+                break;
+            //  Adds VX to I. VF is not affected
+            case 0x001E:
+                I += V[(opcode & 0x0F00) >> 8];
+                pc += 2;
+                break;
+            // Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font
+            case 0x0029:
+                I = chip8_fontset[V[(opcode & 0x0F00) >> 8]];
+                pc += 2;
+                break;
+           // Stores the binary-coded decimal representation of VX, with the most significant of three digits at the address in I, 
+           // the middle digit at I plus 1, and the least significant digit at I plus 2
+            case 0x0033:
+                memory[I] = V[(opcode & 0x0F00) >> 8] / 100;
+                memory[I + 1] = (V[(opcode & 0x0F00) >> 8] / 10) % 10;
+                memory[I + 2] = (V[(opcode & 0x0F00) >> 8] % 100) % 10;
+                pc += 2;
+                break;
+            // Stores from V0 to VX (including VX) in memory, starting at address I, and incrementing the offset from I by 1 each time. I itself is unmodified
+            case 0x0055:
+                for (int i = 0; i <= V[(opcode & 0x0F00) >> 8]; ++i)
+                    memory[I + i] = V[i];
+                pc += 2;
+                break;
+            // 	Fills from V0 to VX (including VX) with values from memory, starting at address I, and incrementing the offset from I by 1 each time. I itself is unmodified
+            case 0x0065:
+                for (int i = 0; i <= V[(opcode & 0x0F00) >> 8]; ++i)
+                    V[i] = memory[I + i];
+                pc += 2;
+                break;
         }
 
     default:
